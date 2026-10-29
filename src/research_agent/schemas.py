@@ -134,3 +134,14 @@ class PageContent(BaseModel):
     text: str = Field(min_length=40)  # near-empty pages count as malformed
     content_type: str = ""
     truncated: bool = False
+# ---------- Reflection ----------
+
+class FollowUp(BaseModel):
+    sub_question_id: Optional[int] = None
+    query: str = Field(min_length=3)
+
+
+class Reflection(BaseModel):
+    covered: bool
+    follow_ups: list[FollowUp] = Field(default_factory=list)
+    notes: str = ""
