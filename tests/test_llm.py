@@ -65,3 +65,7 @@ def test_cost_is_tracked():
     assert llm.usage.prompt_tokens == 100
     assert llm.usage.completion_tokens == 50
     assert llm.usage.cost_usd > 0
+def test_fenced_json_is_accepted():
+    llm, _ = make_client(['```json\n{"name": "a", "count": 2}\n```'])
+    result = llm.structured(model="m", system="s", user="u", schema=Toy)
+    assert result.count == 2

@@ -15,6 +15,8 @@ class Settings:
     # --- API keys ---
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
+    llm_base_url: str = os.getenv("LLM_BASE_URL", "")
+    llm_json_mode: bool = os.getenv("LLM_JSON_MODE", "1") == "1"
 
     # --- Models: cheap for planning/reflection, stronger for synthesis ---
     planner_model: str = os.getenv("PLANNER_MODEL", "gpt-4o-mini")

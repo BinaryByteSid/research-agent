@@ -9,6 +9,7 @@ import json
 import logging
 from dataclasses import dataclass
 from typing import Optional, Type, TypeVar
+import re
 
 from openai import (
     APIConnectionError,
@@ -56,13 +57,23 @@ class Usage:
             "repairs": self.repairs,
         }
 
-
+def _extract_json(raw: str) -> str:
+    """Strip markdown fences / stray prose around a JSON object."""
+    raw = raw.strip()
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.IGNORECASE)
+    start, end = raw.find("{"), raw.rfind("}")
+    if start != -1 and end > start:
+        return raw[start:end + 1]
+    return raw
 class LLMClient:
     def __init__(self, cfg: Settings = default_settings, client: Optional[OpenAI] = None):
         self.cfg = cfg
         # max_retries=0 on the SDK: we own retry behaviour via tenacity, so it is visible and testable.
         self.client = client or OpenAI(
-            api_key=cfg.openai_api_key, timeout=cfg.llm_timeout_s, max_retries=0
+            api_key=cfg.openai_api_key,
+            base_url=cfg.llm_base_url or None,
+            timeout=cfg.llm_timeout_s,
+            max_retries=0,
         )
         self.usage = Usage()
 
@@ -78,12 +89,10 @@ class LLMClient:
             reraise=True,
         )
         def _call():
-            return self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=0,  # determinism: same input -> as close to same output as possible
-            )
+            kwargs = dict(model=model, messages=messages, temperature=0)
+            if self.cfg.llm_json_mode:
+                kwargs["response_format"] = {"type": "json_object"}
+            return self.client.chat.completions.create(**kwargs)
 
         try:
             resp = _call()
@@ -133,7 +142,7 @@ class LLMClient:
         for attempt in range(self.cfg.llm_max_repairs + 1):
             raw = self._complete(model, messages)
             try:
-                return schema.model_validate_json(raw)
+                return schema.model_validate_json(_extract_json(raw))
             except (ValidationError, ValueError) as e:
                 last_error = str(e)
                 log.warning("Schema violation (attempt %d): %s", attempt + 1, last_error[:300])
