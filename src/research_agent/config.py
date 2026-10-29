@@ -24,7 +24,7 @@ class Settings:
 
     # --- Timeouts and retries ---
     llm_timeout_s: float = 60.0
-    llm_max_retries: int = 3          # transient errors only (timeout, 429, 5xx)
+    llm_max_retries: int = 5          # transient errors only (timeout, 429, 5xx)
     llm_max_repairs: int = 1          # re-prompts after schema violation
     tool_timeout_s: float = 15.0
     tool_max_retries: int = 2
@@ -36,6 +36,7 @@ class Settings:
     max_pages_to_fetch: int = 6       # per round
     max_excerpt_chars: int = 3000     # per source sent to the LLM
     max_page_bytes: int = 1_000_000   # download size cap
+    max_sources_for_synthesis: int = 10
 
     # --- Filtering thresholds ---
     min_relevance: float = 0.3

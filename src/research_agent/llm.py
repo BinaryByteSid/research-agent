@@ -85,7 +85,7 @@ class LLMClient:
         @retry(
             retry=retry_if_exception_type(TRANSIENT_ERRORS),
             stop=stop_after_attempt(self.cfg.llm_max_retries),
-            wait=wait_exponential(multiplier=1, min=1, max=10),
+            wait=wait_exponential(multiplier=2, min=2, max=30),
             reraise=True,
         )
         def _call():

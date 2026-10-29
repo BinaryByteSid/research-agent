@@ -145,3 +145,10 @@ class Reflection(BaseModel):
     covered: bool
     follow_ups: list[FollowUp] = Field(default_factory=list)
     notes: str = ""
+# ---------- Synthesizer draft (what the LLM writes; confidence is added by code) ----------
+
+class SynthDraft(BaseModel):
+    short_answer: str = Field(min_length=10)
+    key_findings: list[Finding] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
