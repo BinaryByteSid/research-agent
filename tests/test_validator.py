@@ -79,3 +79,10 @@ def test_all_citations_invalid_means_refusal():
     d = draft(Finding(claim="Claim with a fake source", source_ids=["S99"]))
     out = build_final_answer("q", plan2(), result_with({1: 1, 2: 1}, USED), USED, d)
     assert "Insufficient" in out.short_answer and out.sources == []
+def test_findings_concentrated_on_one_source_cap_confidence():
+    d = draft(Finding(claim="Claim one is supported", source_ids=["S1"]),
+              Finding(claim="Claim two is supported", source_ids=["S1", "S2"]),
+              Finding(claim="Claim three is supported", source_ids=["S1", "S3"]))
+    out = build_final_answer("q", plan2(), result_with({1: 2, 2: 1}, USED), USED, d)
+    assert out.confidence.level == ConfidenceLevel.MEDIUM
+    assert any("single source" in l for l in out.limitations)

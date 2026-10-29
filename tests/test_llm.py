@@ -69,3 +69,18 @@ def test_fenced_json_is_accepted():
     llm, _ = make_client(['```json\n{"name": "a", "count": 2}\n```'])
     result = llm.structured(model="m", system="s", user="u", schema=Toy)
     assert result.count == 2
+def test_auth_error_is_config_error_not_llm_error():
+    import httpx
+    from openai import AuthenticationError
+    from research_agent.llm import LLMConfigError
+
+    class BadKey:
+        def __init__(self):
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+        def _create(self, **kw):
+            req = httpx.Request("POST", "https://x")
+            raise AuthenticationError("bad key", response=httpx.Response(401, request=req), body=None)
+
+    llm = LLMClient(cfg=Settings(), client=BadKey())
+    with pytest.raises(LLMConfigError):
+        llm.structured(model="m", system="s", user="u", schema=Toy)

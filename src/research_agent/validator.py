@@ -8,7 +8,7 @@ Nothing here calls an LLM. It enforces:
 - below a threshold the answer is replaced by an explicit refusal
 """
 from __future__ import annotations
-
+from collections import Counter
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -89,6 +89,7 @@ def build_final_answer(
         limitations.append(f"{result.search_failures} search call(s) failed, so coverage may be incomplete.")
 
     # --- 4. confidence (heuristic, not calibrated) ---
+    # --- 4. confidence (heuristic, not calibrated) ---
     domains = {registered_domain(by_id[i].url) for i in cited_ids}
     domain_score = min(1.0, len(domains) / 3)
     coverage_score = (
@@ -96,14 +97,33 @@ def build_final_answer(
         if result.coverage else 0.0
     )
     integrity = (len(clean) / n_draft) if n_draft else 0.0
-    score = round(0.40 * domain_score + 0.35 * coverage_score + 0.25 * integrity, 2)
+
+    # share of findings that cite the single most-cited source
+    counts = Counter(i for f in clean for i in f.source_ids)
+    top_share = (max(counts.values()) / len(clean)) if clean else 0.0
+    concentrated = top_share > 0.5
+
+    score = 0.40 * domain_score + 0.35 * coverage_score + 0.25 * integrity
+    if concentrated:
+        score -= 0.15
+    score = round(max(0.0, score), 2)
+
     level = _level(score, len(domains), coverage_score)
+    if concentrated and level == ConfidenceLevel.HIGH:
+        level = ConfidenceLevel.MEDIUM  # one source carrying most findings is never "high"
+
     reasons = [
         f"{len(clean)} cited finding(s) drawn from {len(domains)} independent domain(s)",
         f"{round(coverage_score * 100)}% of sub-questions had usable sources",
         f"{round(integrity * 100)}% of drafted findings passed citation checks",
         "Score is a heuristic and has not been calibrated against ground truth",
     ]
+    if concentrated:
+        top_id = counts.most_common(1)[0][0]
+        reasons.append(f"{round(top_share * 100)}% of findings rely on one source ({top_id})")
+        limitations.append(
+            f"Most findings depend on a single source ({top_id}); independent confirmation is limited."
+        )
 
     # --- 5. low-confidence guardrail ---
     if not clean or score < cfg.min_confidence_to_answer:

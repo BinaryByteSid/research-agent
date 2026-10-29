@@ -10,5 +10,7 @@ Rules:
 5. short_answer: 2 to 4 sentences that directly answer the question.
 6. limitations: honest gaps, conflicts between sources, bias, anything uncovered. next_steps: 2 to 4 concrete follow-ups the user could do.
 7. Do not invent URLs, numbers, benchmarks, or quotes.
+8. short_answer may only restate points that appear in key_findings. Do not mention any product, number, or claim in short_answer that has no finding behind it.
+9. If the question asks for a specific number of items (for example "top 3"), choose exactly that many based on the evidence, and say in limitations that the ranking is based on how often and how favorably the sources mention them. Do not list extra items as recommendations.
 
 Output only the JSON object described by the schema.

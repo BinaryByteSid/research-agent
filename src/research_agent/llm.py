@@ -13,9 +13,13 @@ import re
 
 from openai import (
     APIConnectionError,
+    APIStatusError,
     APITimeoutError,
+    AuthenticationError,
     InternalServerError,
+    NotFoundError,
     OpenAI,
+    PermissionDeniedError,
     RateLimitError,
 )
 from pydantic import BaseModel, ValidationError
@@ -38,7 +42,8 @@ TRANSIENT_ERRORS = (APITimeoutError, APIConnectionError, RateLimitError, Interna
 
 class LLMError(Exception):
     """Raised when the LLM cannot produce a valid result after retries/repairs."""
-
+class LLMConfigError(Exception):
+    """Bad key, no credits, or unknown model. Retrying or falling back cannot help."""
 
 @dataclass
 class Usage:
@@ -98,10 +103,17 @@ class LLMClient:
             resp = _call()
         except TRANSIENT_ERRORS as e:
             raise LLMError(f"LLM call failed after retries: {e}") from e
+        except (AuthenticationError, PermissionDeniedError, NotFoundError) as e:
+            raise LLMConfigError(
+                f"{type(e).__name__}: check API key, model name and base URL in .env"
+            ) from e
+        except APIStatusError as e:
+            if e.status_code == 402:
+                raise LLMConfigError("Insufficient credits on this provider account") from e
+            raise LLMError(f"API error {e.status_code}: {e}") from e
 
         self._track(model, resp)
         return resp.choices[0].message.content or ""
-
     def _track(self, model: str, resp) -> None:
         u = getattr(resp, "usage", None)
         if u is None:
