@@ -50,8 +50,8 @@ class Settings:
 
     # --- Domain lists for source quality scoring (starter lists, extend later) ---
     preferred_domains: tuple[str, ...] = (
-        "github.com", "docs.", "arxiv.org", "readthedocs.io",
-        "wikipedia.org", "openai.com", "anthropic.com",
+        "github.com", "docs.", "arxiv.org", "readthedocs.io", "wikipedia.org",
+        "qdrant.tech", "milvus.io", "trychroma.com", "weaviate.io", "pgvector",
     )
     blocked_domains: tuple[str, ...] = (
         "pinterest.com", "quora.com", "facebook.com", "instagram.com",
