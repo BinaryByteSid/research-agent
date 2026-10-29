@@ -26,6 +26,7 @@ class Settings:
     llm_max_repairs: int = 1          # re-prompts after schema violation
     tool_timeout_s: float = 15.0
     tool_max_retries: int = 2
+    tool_backoff_base_s: float = 1.0  # sleep = base * 2^(attempt-1), capped at 8s
 
     # --- Agent loop limits (cost and latency control) ---
     max_rounds: int = 2               # initial pass + at most one follow-up

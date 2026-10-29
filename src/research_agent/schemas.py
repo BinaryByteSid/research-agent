@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ---------- Planning ----------
@@ -105,3 +105,32 @@ class FinalAnswer(BaseModel):
     confidence: Confidence
     limitations: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
+
+# ---------- Tool outputs ----------
+
+class SearchHit(BaseModel):
+    url: str
+    title: str = ""
+    snippet: str = ""
+    score: Optional[float] = None
+
+    @field_validator("url")
+    @classmethod
+    def must_be_http(cls, v: str) -> str:
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("url must start with http:// or https://")
+        return v
+
+
+class SearchOutput(BaseModel):
+    query: str
+    provider: str
+    hits: list[SearchHit]
+
+
+class PageContent(BaseModel):
+    url: str
+    title: str = ""
+    text: str = Field(min_length=40)  # near-empty pages count as malformed
+    content_type: str = ""
+    truncated: bool = False
