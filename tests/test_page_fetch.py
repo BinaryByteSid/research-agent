@@ -65,3 +65,22 @@ def test_oversized_page_is_flagged_truncated():
     res = t.run(url="https://example.com")
     # either extraction succeeds on the partial page (truncated=True) or fails cleanly
     assert (res.ok and res.data.truncated) or (not res.ok and "no extractable text" in res.error)
+def test_tls_certificate_error_is_permanent():
+    state = {"n": 0}
+
+    def handler(req):
+        state["n"] += 1
+        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] Hostname mismatch")
+
+    res = tool_with(handler).run(url="https://example.com")
+    assert not res.ok and state["n"] == 1 and "TLS" in res.error
+
+
+def test_redirect_to_private_address_is_blocked():
+    def handler(req):
+        if req.url.host == "example.com":
+            return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/meta-data"})
+        return httpx.Response(200, text=HTML, headers={"content-type": "text/html"})
+
+    res = tool_with(handler).run(url="https://example.com/x")
+    assert not res.ok and "blocked" in res.error

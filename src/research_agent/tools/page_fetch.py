@@ -1,7 +1,8 @@
 """Fetch a URL and extract clean main-content text.
 
-Guards: http(s) only, private/localhost blocked, content-type check,
-download size cap, timeout, near-empty extraction treated as failure.
+Guards: http(s) only, private/localhost blocked (including after redirects),
+content-type check, download size cap, timeout, TLS errors treated as permanent,
+near-empty extraction treated as failure.
 """
 from __future__ import annotations
 
@@ -31,6 +32,11 @@ def _is_blocked_host(host: str) -> bool:
     return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
 
 
+def _is_tls_error(e: Exception) -> bool:
+    msg = str(e).upper()
+    return "CERTIFICATE_VERIFY_FAILED" in msg or "SSL" in msg and "CERTIFICATE" in msg
+
+
 class PageFetchTool(Tool):
     name = "page_fetch"
     output_model = PageContent
@@ -48,6 +54,11 @@ class PageFetchTool(Tool):
 
         try:
             with self.http.stream("GET", url, headers={"User-Agent": USER_AGENT}) as r:
+                # Re-check the final URL: a public page may redirect to a private address.
+                final_host = r.url.host or ""
+                if _is_blocked_host(final_host):
+                    raise ToolError("blocked host after redirect (private/local address)")
+
                 if r.status_code == 429 or r.status_code >= 500:
                     raise TransientToolError(f"HTTP {r.status_code}")
                 if r.status_code >= 400:
@@ -65,6 +76,13 @@ class PageFetchTool(Tool):
                         break
                     chunks.append(chunk)
                 encoding = r.encoding or "utf-8"
+        except ToolError:
+            raise  # already classified (permanent or transient); do not re-wrap
+        except httpx.ConnectError as e:
+            # ConnectError is a TransportError subclass, so it must be handled first.
+            if _is_tls_error(e):
+                raise ToolError(f"TLS certificate error: {e}") from e
+            raise TransientToolError(f"{type(e).__name__}: {e}") from e
         except (httpx.TimeoutException, httpx.TransportError) as e:
             raise TransientToolError(f"{type(e).__name__}: {e}") from e
 
