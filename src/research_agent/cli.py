@@ -21,7 +21,7 @@ def render_markdown(a: FinalAnswer) -> str:
         out += ["## Sources"]
         out += [f"- [{s.source_id}] {s.title or s.url} - {s.url}" for s in a.sources]
         out += [""]
-    out += [f"## Confidence: {a.confidence.level.value} ({a.confidence.score})"]
+    out += [f"## Confidence: {a.confidence.level.value} ({a.confidence.score:.2f})"]
     out += [f"- {r}" for r in a.confidence.reasons] + [""]
     if a.limitations:
         out += ["## Limitations"] + [f"- {x}" for x in a.limitations] + [""]
